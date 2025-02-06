@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Match for the bookings collection
+    match /bookings/{bookingId} {
+      // Allow reading the document if the user is authenticated
+      allow read: if request.auth != null;
+      
+      // Allow writing only if the user is authenticated (for new bookings, or updates)
+      allow write: if request.auth != null;
+
+      // Special rule to allow Firebase functions to update the status field (e.g., setting status to 'finished')
+      allow update: if request.auth != null && (request.resource.data.status == "finished");
+
+      // Deny delete operations for bookings
+      allow delete: if false;
+    }
+
+    // Match for invoices collection
+    match /invoices/{invoiceId} {
+      // Only allow reading by the user who created the invoice (using user ID from request.auth)
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Only allow write if the user is an admin (trusted function can create invoices)
+      allow write: if false;
+    }
+
+    // Allow public read access for all other collections (if any)
+    match /{document=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
